@@ -9,6 +9,7 @@ import random
 import math
 from ipaddress import ip_address
 from utils import check_port, check_positive_number, work
+import uuid
 
 # configure the log with DEBUG level
 logging.basicConfig(level=logging.DEBUG,
@@ -54,6 +55,81 @@ class Worker(threading.Thread):
             self.socket.send(p)
         # close the socket
         self.socket.close()
+
+
+class Receptionist(Worker):
+    def __init__(self, context, i, backend, mu=0.01, sigma=0.005):
+        idC = 0
+        super(Receptionist, self).__init__(self, context, i, backend, mu=0.01, sigma=0.005)
+
+    def run(self): # Overrides run() from parent
+        self.logger.info('Receptionist start working')
+        while True:
+            # receive a compress object --- request from client (is in queue from drive-through)
+            p = self.socket.recv()
+            # use pickle to load the object
+            o = pickle.loads(p)
+
+            # print the object
+            self.logger.info('Receptionist received %s', o)
+
+            # generate the number of seconds the work will take
+            seconds = math.fabs(random.gauss(self.mu, self.sigma))
+            self.logger.info('Will work for %f seconds', seconds)
+            # work(sleep) for the previous amount of seconds
+            work(seconds)
+
+            # message from receptionist to pending queue
+            new_req.req_type = "receptionist_to_pending"
+            new_req.req_id = uuid.uuid1()
+            save_id = new_req.req_id
+            new_req.client_id = uuid.uuid1()
+            new_req.items = o.req_items
+            self.socket.send(pickle.dumps(new_req))
+
+            # message from receptionist to cook queue
+            for item in o.req_items:
+                new_req.req_type = item.item_type + "_todo"
+                new_req.quantity = item.quantity
+                self.socket.send(pickle.dumps(new_req))
+
+            # message from receptionist to client (req. ack. and info.)
+            new_req.req_type = "req_ack"
+            new_req.req_id = save_id
+
+        # close the socket
+        self.socket.close()
+
+class Cook(Worker):
+    def __init__(self, context, i, backend, mu=0.01, sigma=0.005):
+        super(Receptionist, self).__init__(self, context, i, backend, mu=0.01, sigma=0.005)
+
+    def run(self): # Overrides run() from parent
+        self.logger.info('Cooker start working')
+        while True:
+            # receive a compress object
+            p = self.socket.recv()
+            # use pickle to load the object
+            o = pickle.loads(p)
+
+            # print the object
+            self.logger.info('Worker received %s', o)
+            # generate the number of seconds the work will take
+            seconds = math.fabs(random.gauss(self.mu, self.sigma))
+            self.logger.info('Will work for %f seconds', seconds)
+            # work(sleep) for the previous amount of seconds
+            work(seconds)
+
+            # use pickle to dump a object
+            p = pickle.dumps('ACK')
+            # send it
+            self.socket.send(p)
+        # close the socket
+        self.socket.close()
+
+
+
+
 
 
 class DriveThrough(threading.Thread):

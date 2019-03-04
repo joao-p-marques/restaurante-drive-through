@@ -7,7 +7,6 @@
 
 ```console
 $ python3 -m venv venv
-$ source venv/bin/activate
 $ pip install -r requirements.txt
 ```
 ## Running the example
@@ -19,11 +18,11 @@ Run the each entity on a terminal:
 
 drive-through:
 ```console
-$ python drive-through.py
+$ python3 drive-through.py
 ```
 client_example:
 ```console
-$ python client_example.py
+$ python3 client_example.py
 ```
 
 ## Authors
