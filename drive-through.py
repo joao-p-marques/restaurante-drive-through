@@ -17,14 +17,20 @@ logging.basicConfig(level=logging.DEBUG,
                     datefmt='%m-%d %H:%M')
 
 class Device():
-    def __init__(self, avg_time):
-        self.avg_time = avg_time
+    def __init__(self, mu):
+        self.mu = mu
         self.sigma = 0.005
 
 class Grill(Device):
     def __init__(self):
         super(Grill, self).__init__(self, 0.03)
 
+    def run():
+        # generate the number of seconds the work will take
+        seconds = math.fabs(random.gauss(self.mu, self.sigma))
+        self.logger.info('Will work for %f seconds', seconds)
+        # work(sleep) for the previous amount of seconds
+        work(seconds)
 
 class Worker(threading.Thread):
     def __init__(self, context, i, backend, mu=0.01, sigma=0.005):
@@ -64,7 +70,6 @@ class Worker(threading.Thread):
             self.socket.send(p)
         # close the socket
         self.socket.close()
-
 
 class Receptionist(Worker):
     def __init__(self, context, i, backend, mu=0.01, sigma=0.005):
@@ -128,41 +133,17 @@ class Cook(Worker):
             p = self.socket.recv()
             # use pickle to load the object
             o = pickle.loads(p)
-
             # print the object
             self.logger.info('Cook received %s', o)
 
-            # generate the number of seconds the work will take
-            seconds = math.fabs(random.gauss(self.mu, self.sigma))
-            self.logger.info('Will work for %f seconds', seconds)
-            # work(sleep) for the previous amount of seconds
-            work(seconds)
+            devices[o.food_type].run() # call device from request
 
-            # message from receptionist to pending queue
-            new_req.req_type = "receptionist_to_pending"
-            new_req.req_id = uuid.uuid1()
-            save_id = new_req.req_id
-            new_req.client_id = uuid.uuid1()
-            new_req.items = o.req_items
+            # after food ready, send request to ready queue
+            new_req.req_type = "cook_ready" # ???
             self.socket.send(pickle.dumps(new_req))
-
-            # message from receptionist to cook queue
-            for item in o.req_items:
-                new_req.req_type = item.item_type + "_todo"
-                new_req.quantity = item.quantity
-                self.socket.send(pickle.dumps(new_req))
-
-            # message from receptionist to client (req. ack. and info.)
-            new_req.req_type = "req_ack"
-            new_req.req_id = save_id
-
+            
        # close the socket
         self.socket.close()
-
-
-
-
-
 
 class DriveThrough(threading.Thread):
     def __init__(self, frontend, n_workers, backend='inproc://backend'):
