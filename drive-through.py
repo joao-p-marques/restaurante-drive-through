@@ -16,6 +16,7 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                     datefmt='%m-%d %H:%M')
 
+
 class Device():
     def __init__(self, mu):
         self.mu = mu
@@ -26,11 +27,31 @@ class Grill(Device):
         super(Grill, self).__init__(self, 0.03)
 
     def run():
-        # generate the number of seconds the work will take
+        # generate the number of seconds the work will take and work (sleep)
         seconds = math.fabs(random.gauss(self.mu, self.sigma))
-        self.logger.info('Will work for %f seconds', seconds)
-        # work(sleep) for the previous amount of seconds
+        self.logger.info('Use grill for %f seconds', seconds)
         work(seconds)
+
+class Drinks(Device):
+    def __init__(self):
+        super(Drinks, self).__init__(self, 0.01)
+
+    def run():
+        # generate the number of seconds the work will take and work (sleep)
+        seconds = math.fabs(random.gauss(self.mu, self.sigma))
+        self.logger.info('Use dinks for %f seconds', seconds)
+        work(seconds)
+
+class Fries(Device):
+    def __init__(self):
+        super(Fries, self).__init__(self, 0.05)
+
+    def run():
+        # generate the number of seconds the work will take and work (sleep)
+        seconds = math.fabs(random.gauss(self.mu, self.sigma))
+        self.logger.info('Use grill for %f seconds', seconds)
+        work(seconds)
+
 
 class Worker(threading.Thread):
     def __init__(self, context, i, backend, mu=0.01, sigma=0.005):
@@ -129,7 +150,7 @@ class Cook(Worker):
             new_req.req_type = "cook_req_for_new"
             self.socket.send(pickle.dumps(new_req))
 
-            # receive a compress object --- order to cook item 
+            # receive a compress object --- order to cook item
             p = self.socket.recv()
             # use pickle to load the object
             o = pickle.loads(p)
@@ -139,11 +160,71 @@ class Cook(Worker):
             devices[o.food_type].run() # call device from request
 
             # after food ready, send request to ready queue
-            new_req.req_type = "cook_ready" # ???
+            new_req.req_type = o.food_ready + "_ready"
             self.socket.send(pickle.dumps(new_req))
-            
+
        # close the socket
         self.socket.close()
+
+class Deliver(Worker):
+    def __init__(self, context, i, backend, mu=0.01, sigma=0.005):
+        super(Deliver, self).__init__(self, context, i, backend, mu=0.01, sigma=0.005)
+
+    def run(self): # Overrides run() from parent
+        self.logger.info('Deliver start working')
+        while True:
+            # request from deliver to restaurant for new pending requests in queue
+            new_req.req_type = "deliver_req_for_new"
+            self.socket.send(pickle.dumps(new_req))
+
+            o = pickle.loads(self.socket.recv())
+            # print the object
+            self.logger.info('Deliver received %s', o)
+
+            # after getting the object, will retrieve ready items from kitchen
+            for item in o.items:
+                new_req.req_type = "get_" + item + "_ready"
+                self.socket.send(pickle.dumps(new_req))
+
+            # put finished order in queue for delivery to client
+            new_req.req_type = "delivery_to_client"
+            new_req.req_id = o.req_id
+            new_req.client_id = o.client_id
+            new_req.items = o.items
+
+       # close the socket
+        self.socket.close()
+
+class Client(Worker):
+    def __init__(self, context, i, backend, mu=0.01, sigma=0.005):
+        super(Client, self).__init__(self, context, i, backend, mu=0.01, sigma=0.005)
+
+    def run(self): # Overrides run() from parent
+        self.logger.info('Client start working')
+        while True:
+            # request from deliver to restaurant for new pending requests in queue
+            new_req.req_type = "deliver_req_for_new"
+            self.socket.send(pickle.dumps(new_req))
+
+            o = pickle.loads(self.socket.recv())
+            # print the object
+            self.logger.info('Deliver received %s', o)
+
+            # after getting the object, will retrieve ready items from kitchen
+            for item in o.items:
+                new_req.req_type = "get_" + item + "_ready"
+                self.socket.send(pickle.dumps(new_req))
+
+            # put finished order in queue for delivery to client
+            new_req.req_type = "delivery_to_client"
+            new_req.req_id = o.req_id
+            new_req.client_id = o.client_id
+            new_req.items = o.items
+
+        # close the socket
+        self.socket.close()
+
+
 
 class DriveThrough(threading.Thread):
     def __init__(self, frontend, n_workers, backend='inproc://backend'):
