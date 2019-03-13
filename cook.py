@@ -28,10 +28,14 @@ def main(ip, port):
         o = pickle.loads(p)
         logger.info('Received %s', o)
     
-        # get item from o and work in it. Implement each item.
+        # get item from o and work in it. 
+        logger.info('Cook ' + o.type)
+        p = pickle.dumps({"method": COOK, "args": o})
+        socket.send(p)
    
-        logger.info("Task Ready")
-        p = pickle.dumps({"method": TASK_READY, "args": o})
+        # put item in ready queue
+        logger.info('Passing to ready queue')
+        p = pickle.dumps({"method": PUT_IN_READY, "args": o})
         socket.send(p)
     
         p = socket.recv()

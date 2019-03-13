@@ -1,0 +1,32 @@
+From deliver:
+
+REQ_DELIVER_PENDING
+GET_HAMBURGER
+GET_FRIES
+GET_DRINK
+PUT_IN_DELIVERY
+
+From cook:
+
+REQ_ITEM
+COOK (For each food type)
+PUT_IN_READY
+TASK_READY
+
+From client:
+
+ORDER
+PICKUP
+
+From receptionist:
+
+REQ_TASK
+PUT_HAMBURGER
+PUT_FRIES
+PUT_DRINK
+PUT_IN_PENDING
+
+Queues:
+
+Items in queues for cook are like
+  {'type': 'hamburger'/'fries'/'drink'}
