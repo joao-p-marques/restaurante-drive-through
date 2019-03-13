@@ -59,12 +59,32 @@ class Worker(threading.Thread):
 
 class DriveThrough():
     def __init__(self):
-        self.orders = Queue()
-        self.task = Queue()
+        self.orders = Queue() # orders from client
+        self.pending = Queue() # orders that are pending and leave the client waiting
+        self.deliver = Queue() # orders that are ready to deliver to the client
+        self.to_cook = Queue() # orders that need to be cooked
+        self.cooked = Queue() # orders that were already cookedd
 
     def add_order(self, order):
         order_id = uuid.uuid1()
         self.orders.put((order_id, order))
+        return order_id
+
+    def get_order(self):
+        return self.orders.get()
+
+    def switch_to_pending(self, order_id, order):
+        self.pending.put((order_id, order))
+        return order_id
+
+    # NOTE: get_order() and switch_to_pending() will be called at the same moment. 
+    # This functionality will be present at the implementation in utils.py
+
+    def get_pending(self):
+        return self.pending.get()
+
+    def deliver(self, order_id, order):
+        self.deliver.put((order_id, order))
         return order_id
 
     def ready(self, order):
